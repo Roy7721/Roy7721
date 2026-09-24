@@ -6,7 +6,13 @@ I build end-to-end ML systems: training pipelines, model registries, CI/CD, APIs
 
 Open to Data Science, ML Engineer, and AI Engineer roles.
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-%230077B5.svg?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/rana-roy-4771b5282/) [![email](https://img.shields.io/badge/Email-D14836?logo=gmail&logoColor=white)](mailto:ranaroy4007@gmail.com)
+**Two of these are running live right now** — click and try them:
+
+[![Investor Intelligence](https://img.shields.io/badge/Investor_Intelligence-live-0f7b52?style=for-the-badge)](https://investor-intelligence.ashysmoke-d4f578eb.koreacentral.azurecontainerapps.io) [![Sentiment API](https://img.shields.io/badge/Sentiment_API-live-0f7b52?style=for-the-badge)](https://yt-sentiment-api.ashysmoke-d4f578eb.koreacentral.azurecontainerapps.io)
+
+*Both scale to zero, so the first request after an idle spell takes ~20s to wake the container.*
+
+[![Portfolio](https://img.shields.io/badge/Portfolio-roy7721.github.io-1A4D8F?logo=github&logoColor=white)](https://roy7721.github.io) [![LinkedIn](https://img.shields.io/badge/LinkedIn-%230077B5.svg?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/rana-roy-4771b5282/) [![email](https://img.shields.io/badge/Email-D14836?logo=gmail&logoColor=white)](mailto:ranaroy4007@gmail.com)
 
 ---
 
@@ -15,16 +21,32 @@ Open to Data Science, ML Engineer, and AI Engineer roles.
 ### AI-Powered Investor Intelligence Platform
 **RAG system for SEC annual reports — ask questions about a company's financials in plain English.**
 
-Ingests 10-K filings and answers questions with figures pulled directly from the financial statements. Built and verified across Apple, Microsoft, and Tesla filings.
+Ingests 10-K filings and answers with figures pulled directly from the financial statements, each one traceable to the table row it was read from. Built and verified across Apple, Microsoft, and Tesla FY2024 filings.
 
-- Full pipeline: PDF → markdown → structure-aware chunking → LLM table-to-text conversion → vector store → retrieval → answer generation
-- Diagnosed a retrieval failure where financial tables were indexed without their captions and truncated at the embedding model's 512-token limit, dropping entire rows before they ever reached the database. Resolved with caption pairing, heading propagation, and a table-guaranteed retrieval merge.
-- Built a 34-question evaluation set with hand-verified ground truth from the source filings. One third of the questions are unanswerable by design (wrong company, non-existent segment, false premise) to measure hallucination and refusal behaviour.
-- Retrieval and generation scored separately, since an end-to-end accuracy number cannot identify which layer failed. Current score: 31/34.
+- Full pipeline: PDF → markdown → structure-aware chunking → table-aware indexing → vector store → company-and-year-filtered retrieval → answer generation. **3,213 chunks**, with 0 characters lost, 0 duplicated, and 0 of 3,213 table rows altered.
+- **18/18 numeric KPIs correct**, and **18/18 traceable** — an automated `looks_wrong()` check reformats every extracted number and asserts it appears inside its own source quote, which catches a value the model inferred rather than read. A second check subtracts liabilities from assets and asserts the remainder is plausible, catching two individually believable figures that contradict each other.
+- **The negative case is the one I care about.** Microsoft's filing is an annual report, not a 10-K, and has no Item 1A. An earlier version matched on the phrase *"Risk Factors"* — which appears three times in that document, every one a cross-reference — declared the section present, and let the model substitute market-risk categories in its place. Matching on `Item 1A`, a structural identifier rather than prose, made the system report the section as absent instead of inventing it.
+- **Retrieval, measured before and after.** `operating_income` was returning the wrong chunk. Rank of the correct chunk improved from 4→1 (Microsoft), 10→2 (Tesla 2024) and 26→3 (Tesla 2025) after pairing tables with their captions and querying several income-statement line items together.
+- Deployed to Azure Container Apps behind FastAPI; cold start cut **11×**, from 231s to 20.5s, by baking the vector store and KPI cache into the image.
 
-`Python` · `LangChain` · `ChromaDB` · `FastAPI` · `Streamlit` · `Groq` · `OpenRouter` · `PyMuPDF`
+`Python` · `FastAPI` · `ChromaDB` · `Google Gemini` · `OpenRouter` · `Docker` · `Azure Container Apps` · `PyMuPDF`
 
-<!-- add repo link -->
+[▶ Try it live](https://investor-intelligence.ashysmoke-d4f578eb.koreacentral.azurecontainerapps.io) · [Repository →](https://github.com/Roy7721/Investor_intelligence_bot)
+
+---
+
+### YouTube Comment Sentiment — Chrome Extension + MLOps Pipeline
+**A browser extension that shows live sentiment analysis on any video's comment section, served by an automated ML pipeline.**
+
+- **Model:** compared seven algorithms with Optuna-tuned hyperparameters, testing under/over-sampling and ADASYN for class imbalance. TF-IDF with elastic-net Logistic Regression won — **0.885 accuracy, 0.875 macro F1** — not because it scored highest on paper, but for its accuracy-to-latency trade-off: fast inference and a small memory footprint, which is what a responsive browser plugin actually needs.
+- **Pipeline:** a 5-stage reproducible DVC pipeline. GitHub Actions runs `dvc repro` → automated model tests as a pre-promotion gate (valid labels, accuracy ≥ 0.80) → MLflow registry. A regressed model never reaches the plugin.
+- **Deployment:** the same pipeline builds the image and deploys to Azure Container Apps on every green run, pinned to the commit SHA rather than `latest` — so every live deploy traces back to an exact commit.
+- **Serving:** Flask prediction API behind Waitress, consumed by a Manifest V3 Chrome extension that analyses the comment section in place.
+- **Known limitation, stated honestly:** trained on Reddit comments, used on YouTube. Different tone, length and vocabulary, so real-world accuracy is lower than the 0.885 test score suggests.
+
+`Python` · `scikit-learn` · `spaCy` · `Optuna` · `MLflow` · `DVC` · `Flask` · `Docker` · `GitHub Actions` · `Azure` · `JavaScript`
+
+[▶ Live API](https://yt-sentiment-api.ashysmoke-d4f578eb.koreacentral.azurecontainerapps.io) · [Repository →](https://github.com/Roy7721/yt_comment_analysis)
 
 ---
 
@@ -33,25 +55,11 @@ Ingests 10-K filings and answers questions with figures pulled directly from the
 
 - RAG over video transcripts, with per-video caching so repeat sessions skip re-embedding
 - Every answer cites the exact timestamp in the source video, so claims are checkable against the original
-- FastAPI backend, Streamlit frontend, local sentence-transformer embeddings
+- Two-path design: one-time ingestion through a timestamp-preserving chunker, then per-query retrieval answering in ~1s, with embeddings run locally on CPU
 
 `Python` · `LangChain` · `ChromaDB` · `FastAPI` · `Streamlit` · `Groq`
 
 [Repository →](https://github.com/Roy7721/Yt_chatbot)
-
----
-
-### YouTube Comment Sentiment — Chrome Extension + MLOps Pipeline
-**A browser extension that shows live sentiment analysis on any video's comment section, served by an automated ML pipeline.**
-
-- **Model:** Logistic Regression with custom spaCy features, hyperparameters tuned with Optuna — macro F1 **0.876**
-- **Evaluation:** built a ~400-comment held-out set from the YouTube Data API, with a pilot annotation round to check labelling reliability first (Cohen's κ = **0.822**)
-- **Pipeline:** GitHub Actions running DVC reproduction → automated model tests as a pre-promotion gate → MLflow registry → Docker image build and publish. Models reach the registry only after passing the gate.
-- **Serving:** Flask prediction API, containerised and served with Waitress
-
-`Python` · `scikit-learn` · `spaCy` · `Optuna` · `MLflow` · `DVC` · `Flask` · `Docker` · `GitHub Actions` · `JavaScript`
-
-<!-- add repo link -->
 
 ---
 
@@ -71,7 +79,7 @@ Ingests 10-K filings and answers questions with figures pulled directly from the
 
 **MLOps & Deployment**
 
-![MLflow](https://img.shields.io/badge/mlflow-%23d9ead3.svg?style=for-the-badge&logo=numpy&logoColor=blue) ![DVC](https://img.shields.io/badge/DVC-13ADC7?style=for-the-badge&logo=dvc&logoColor=white) ![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white) ![GitHub Actions](https://img.shields.io/badge/github%20actions-%232671E5.svg?style=for-the-badge&logo=githubactions&logoColor=white) ![GitLab CI](https://img.shields.io/badge/gitlab%20CI-%23181717.svg?style=for-the-badge&logo=gitlab&logoColor=white)
+![MLflow](https://img.shields.io/badge/mlflow-%23d9ead3.svg?style=for-the-badge&logo=numpy&logoColor=blue) ![DVC](https://img.shields.io/badge/DVC-13ADC7?style=for-the-badge&logo=dvc&logoColor=white) ![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white) ![GitHub Actions](https://img.shields.io/badge/github%20actions-%232671E5.svg?style=for-the-badge&logo=githubactions&logoColor=white) ![Azure](https://img.shields.io/badge/Azure-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white) ![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=for-the-badge&logo=kubernetes&logoColor=white)
 
 **Backends & APIs**
 
@@ -89,12 +97,11 @@ Ingests 10-K filings and answers questions with figures pulled directly from the
 
 ## Research
 
-**MSc, Department of Statistics — University of Rajshahi**
+**MSc, Department of Statistics — University of Rajshahi** (CGPA 3.83/4.00)
 
-Two papers in progress from my thesis work:
+Thesis: *Determinants of Life Expectancy in Developing and Emerging Asian Economies* — Panel ARDL with PMG and MG estimators and unit-root pre-testing, 2000–2022, stratified by income group.
 
-- **Public health** — statistical modelling of health outcome data
-- **Econometrics** — quantitative frameworks for economic and behavioural trends
+Two working papers (Roy & Sabbiruzzaman) from this work, presented at the 2nd **ICRAST**, University of Rajshahi (oral) and **ICASDS 2025**, ISRT, University of Dhaka (poster).
 
 ---
 
