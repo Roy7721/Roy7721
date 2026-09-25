@@ -8,7 +8,7 @@ Open to Data Science, ML Engineer, and AI Engineer roles.
 
 **Two of these are running live right now** — click and try them:
 
-[![Investor Intelligence](https://img.shields.io/badge/Investor_Intelligence-live-0f7b52?style=for-the-badge)](https://investor-intelligence.ashysmoke-d4f578eb.koreacentral.azurecontainerapps.io) [![Sentiment API](https://img.shields.io/badge/Sentiment_API-live-0f7b52?style=for-the-badge)](https://yt-sentiment-api.ashysmoke-d4f578eb.koreacentral.azurecontainerapps.io)
+[![Investor Intelligence](https://img.shields.io/badge/Investor_Intelligence-live-0f7b52?style=for-the-badge)](https://investor-intelligence.ashysmoke-d4f578eb.koreacentral.azurecontainerapps.io) [![Sentiment API](https://img.shields.io/badge/Sentiment_Model-live-0f7b52?style=for-the-badge)](https://yt-sentiment-api.ashysmoke-d4f578eb.koreacentral.azurecontainerapps.io)
 
 *Both scale to zero, so the first request after an idle spell takes ~20s to wake the container.*
 
@@ -38,15 +38,23 @@ Ingests 10-K filings and answers with figures pulled directly from the financial
 ### YouTube Comment Sentiment — Chrome Extension + MLOps Pipeline
 **A browser extension that shows live sentiment analysis on any video's comment section, served by an automated ML pipeline.**
 
-- **Model:** compared seven algorithms with Optuna-tuned hyperparameters, testing under/over-sampling and ADASYN for class imbalance. TF-IDF with elastic-net Logistic Regression won — **0.885 accuracy, 0.875 macro F1** — not because it scored highest on paper, but for its accuracy-to-latency trade-off: fast inference and a small memory footprint, which is what a responsive browser plugin actually needs.
+- **Model selection as an engineering decision.** Compared seven algorithms with Optuna-tuned hyperparameters, testing under/over-sampling and ADASYN for class imbalance. TF-IDF with elastic-net Logistic Regression won — **0.885 accuracy, 0.875 macro F1** — not for the leaderboard, but for its accuracy-to-latency trade-off: fast inference and a small memory footprint, which is what a responsive browser plugin needs. The model is deliberately the smallest part of this project; swapping in a transformer is a data and compute question, and the pipeline around it would not change.
 - **Pipeline:** a 5-stage reproducible DVC pipeline. GitHub Actions runs `dvc repro` → automated model tests as a pre-promotion gate (valid labels, accuracy ≥ 0.80) → MLflow registry. A regressed model never reaches the plugin.
 - **Deployment:** the same pipeline builds the image and deploys to Azure Container Apps on every green run, pinned to the commit SHA rather than `latest` — so every live deploy traces back to an exact commit.
 - **Serving:** Flask prediction API behind Waitress, consumed by a Manifest V3 Chrome extension that analyses the comment section in place.
-- **Known limitation, stated honestly:** trained on Reddit comments, used on YouTube. Different tone, length and vocabulary, so real-world accuracy is lower than the 0.885 test score suggests.
+- **Known limitation, stated honestly:** trained on Reddit comments, used on YouTube. It reads explicit sentiment well and understated negativity ("not helpful", "clickbait") less well — a vocabulary gap from the training data, which I found by probing the deployed model rather than by reading the test score.
 
 `Python` · `scikit-learn` · `spaCy` · `Optuna` · `MLflow` · `DVC` · `Flask` · `Docker` · `GitHub Actions` · `Azure` · `JavaScript`
 
-[▶ Live API](https://yt-sentiment-api.ashysmoke-d4f578eb.koreacentral.azurecontainerapps.io) · [Repository →](https://github.com/Roy7721/yt_comment_analysis)
+**[▶ Try the model live](https://yt-sentiment-api.ashysmoke-d4f578eb.koreacentral.azurecontainerapps.io)** — paste in your own comments, no install needed. Or hit the API directly:
+
+```bash
+curl -X POST https://yt-sentiment-api.ashysmoke-d4f578eb.koreacentral.azurecontainerapps.io/predict   -H "Content-Type: application/json"   -d '{"comments":["this is amazing","worst video ever","it was okay"]}'
+```
+
+The Chrome extension is the intended front end and loads unpacked (`chrome://extensions` → Developer mode → Load unpacked).
+
+[Repository →](https://github.com/Roy7721/yt_comment_analysis) · [Extension repo →](https://github.com/Roy7721/Chrome_plugin)
 
 ---
 
