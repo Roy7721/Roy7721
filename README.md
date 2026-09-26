@@ -6,11 +6,11 @@ I build end-to-end ML systems: training pipelines, model registries, CI/CD, APIs
 
 Open to Data Science, ML Engineer, and AI Engineer roles.
 
-**Two of these are running live right now** — click and try them:
+**Three of these are running live right now** — click and try them:
 
-[![Investor Intelligence](https://img.shields.io/badge/Investor_Intelligence-live-0f7b52?style=for-the-badge)](https://investor-intelligence.ashysmoke-d4f578eb.koreacentral.azurecontainerapps.io) [![Sentiment API](https://img.shields.io/badge/Sentiment_Model-live-0f7b52?style=for-the-badge)](https://yt-sentiment-api.ashysmoke-d4f578eb.koreacentral.azurecontainerapps.io)
+[![Investor Intelligence](https://img.shields.io/badge/Investor_Intelligence-live-0f7b52?style=for-the-badge)](https://investor-intelligence.ashysmoke-d4f578eb.koreacentral.azurecontainerapps.io) [![TripMate AI](https://img.shields.io/badge/TripMate_AI-live-0f7b52?style=for-the-badge)](https://tripmate-ai.ashysmoke-d4f578eb.koreacentral.azurecontainerapps.io) [![Sentiment API](https://img.shields.io/badge/Sentiment_Model-live-0f7b52?style=for-the-badge)](https://yt-sentiment-api.ashysmoke-d4f578eb.koreacentral.azurecontainerapps.io)
 
-*Both scale to zero, so the first request after an idle spell takes ~20s to wake the container.*
+*All three scale to zero, so the first request after an idle spell waits a few seconds for the container to wake.*
 
 [![Portfolio](https://img.shields.io/badge/Portfolio-roy7721.github.io-1A4D8F?logo=github&logoColor=white)](https://roy7721.github.io) [![LinkedIn](https://img.shields.io/badge/LinkedIn-%230077B5.svg?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/rana-roy-4771b5282/) [![email](https://img.shields.io/badge/Email-D14836?logo=gmail&logoColor=white)](mailto:ranaroy4007@gmail.com)
 
@@ -32,6 +32,21 @@ Ingests 10-K filings and answers with figures pulled directly from the financial
 `Python` · `FastAPI` · `ChromaDB` · `Google Gemini` · `OpenRouter` · `Docker` · `Azure Container Apps` · `PyMuPDF`
 
 [▶ Try it live](https://investor-intelligence.ashysmoke-d4f578eb.koreacentral.azurecontainerapps.io) · [Repository →](https://github.com/Roy7721/Investor_intelligence_bot)
+
+---
+
+### TripMate AI — multi-agent travel planner with human-in-the-loop approval
+**A supervisor routes each request to only the specialists it needs, and the draft itinerary pauses for your approval before the final plan is written.**
+
+- **Supervisor routing, not a fixed pipeline.** One LLM call returns strict JSON naming which specialists a request needs — flights, hotels, weather, budget — along with the trip constraints it extracted. Conditional edges then walk only those agents, so a hotel-only question never triggers a flight lookup. If that JSON fails to parse it falls back to running everything: slow beats broken.
+- **Human-in-the-loop that survives a restart.** LangGraph's `interrupt()` pauses the graph on the draft itinerary and writes the paused run to PostgreSQL, so it outlives the process. `POST /api/travel/approve` resumes it — approve it, or send it back with feedback the final agent applies.
+- **Three kinds of MCP server, one written from scratch.** A hosted HTTP server (Tavily), a third-party stdio server launched with `uvx` (AviationStack), and a weather server I built with `FastMCP` over OpenWeatherMap. An input guardrail refuses off-topic and harmful requests before any specialist runs — a bank-hacking prompt is refused in under 2s with zero agents invoked.
+- **The bug I learned the most from.** `TravelState` declared `selected_agent`; the code wrote `selected_agents`. LangGraph **silently drops keys that are not in the state schema**, so the supervisor's choice was discarded and every request skipped all four specialists. I found it by running the real graph against a fake LLM and an in-memory checkpointer — no API calls, no cost, runs in a second.
+- **Deployed** to Azure Container Apps with the image pinned to the commit SHA rather than `latest`, API keys as Container Apps secrets, and scale-to-zero (~6s cold start). A full plan takes **66s** to the draft and **5s** after approval — faster than on my own machine, because the checkpoint database sits a short hop away rather than across the Pacific.
+
+`Python` · `LangGraph` · `Model Context Protocol` · `FastAPI` · `PostgreSQL` · `Groq` · `Docker` · `Azure Container Apps`
+
+**[▶ Try it live](https://tripmate-ai.ashysmoke-d4f578eb.koreacentral.azurecontainerapps.io)** · [Repository →](https://github.com/Roy7721/TripMate_AI) · [How I built it, version by version →](https://github.com/Roy7721/TripMate_AI/blob/master/JOURNEY.md)
 
 ---
 
@@ -79,7 +94,7 @@ The Chrome extension is the intended front end and loads unpacked (`chrome://ext
 
 **LLM & AI Engineering**
 
-![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white) ![ChromaDB](https://img.shields.io/badge/ChromaDB-FFCE44?style=for-the-badge&logoColor=black) ![HuggingFace](https://img.shields.io/badge/Hugging%20Face-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black) ![spaCy](https://img.shields.io/badge/spaCy-09A3D5?style=for-the-badge&logo=spacy&logoColor=white) ![MCP](https://img.shields.io/badge/MCP-000000?style=for-the-badge&logo=modelcontextprotocol&logoColor=white)
+![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white) ![LangGraph](https://img.shields.io/badge/LangGraph-1C3C3C?style=for-the-badge&logo=langgraph&logoColor=white) ![ChromaDB](https://img.shields.io/badge/ChromaDB-FFCE44?style=for-the-badge&logoColor=black) ![HuggingFace](https://img.shields.io/badge/Hugging%20Face-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black) ![spaCy](https://img.shields.io/badge/spaCy-09A3D5?style=for-the-badge&logo=spacy&logoColor=white) ![MCP](https://img.shields.io/badge/MCP-000000?style=for-the-badge&logo=modelcontextprotocol&logoColor=white)
 
 **Deep Learning**
 
@@ -95,7 +110,7 @@ The Chrome extension is the intended front end and loads unpacked (`chrome://ext
 
 **Databases**
 
-![MySQL](https://img.shields.io/badge/mysql-4479A1.svg?style=for-the-badge&logo=mysql&logoColor=white) ![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/postgresql-4169E1.svg?style=for-the-badge&logo=postgresql&logoColor=white) ![MySQL](https://img.shields.io/badge/mysql-4479A1.svg?style=for-the-badge&logo=mysql&logoColor=white) ![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white)
 
 **Analytics & Statistical Tools**
 
